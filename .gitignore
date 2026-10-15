@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*.nii
+*.nii.gz
+*.nrrd
+*.mrb
+*.dcm
+tests/verified-*.txt
+tests/benchmark_real_cases.py
+tests/gui_startup.py
+tests/index_nested_real.py
+tests/verify_native_install.py
+*-result.txt

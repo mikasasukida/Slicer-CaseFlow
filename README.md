@@ -2,6 +2,8 @@
 
 CaseFlow 是一个 3D Slicer 脚本模块，为多级文件夹中的 NIfTI 病例增加中文样本树和逐例标注流程。它保留 Slicer 原有模块、切片工具和 3D 功能；标注仍使用原生 Segment Editor。
 
+针对原生导入、内存与后续优化的源码审查见 [3D Slicer 5.10.0 性能审查](docs/SLICER_SOURCE_AUDIT.md)。
+
 ## 功能
 
 - 递归索引 `.nii`、`.nii.gz` 的文件名，建列表时不读取图像体素。

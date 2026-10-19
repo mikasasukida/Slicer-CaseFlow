@@ -59,6 +59,15 @@ def run():
             assert widget._mask_path(0) == masks / "sampleA/1/scan.nii.gz"
             assert widget._mask_path(1) == masks / "sampleB/1/scan.nii.gz"
             assert not slicer.util.getNodesByClass("vtkMRMLScalarVolumeNode")
+            collision = root / "collision"
+            collision.mkdir()
+            (collision / "duplicate.nii").touch()
+            (collision / "duplicate.nii.gz").touch()
+            widget.image_path_edit.text = str(collision)
+            widget.index_image_dir()
+            wait_for(lambda: widget._index_stage is None, "冲突文件检查完成")
+            assert "索引失败" in str(widget.index_progress.text), "同名 NIfTI 扩展名冲突应被拦截"
+            assert len(widget.paths) == 3, "索引失败后旧列表应保持不变"
             large = root / "large"
             for sample in range(60):
                 folder = large / f"w{sample:03d}" / "cor"

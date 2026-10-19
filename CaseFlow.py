@@ -53,7 +53,8 @@ def image_paths(folder, exclude=None, cancel=None, progress=None):
             progress("scan", len(paths), folders)
     if cancel is not None and cancel.is_set():
         raise ScanCancelled()
-    return sorted(paths, key=lambda p: str(p.relative_to(root)).casefold())
+    paths.sort(key=lambda p: str(p.relative_to(root)).casefold())
+    return paths
 
 
 def _sample_dir(relative):
@@ -74,20 +75,21 @@ def _scan_index(folder, output_dir, cancel, messages, generation):
 
     try:
         paths = image_paths(folder, output_dir, cancel, report)
-        seen = set()
-        sample_dirs = []
         counts = Counter()
         marked = []
+        previous_key = None
         for index, path in enumerate(paths):
             if cancel.is_set():
                 raise ScanCancelled()
             relative = path.relative_to(folder)
             key = str(relative.parent / nifti_stem(path)).casefold()
-            if key in seen:
+            # The sorted NIfTI paths put .nii and .nii.gz variants of the
+            # same case next to each other, so one key is enough to detect
+            # collisions without retaining a second per-file set.
+            if key == previous_key:
                 raise ValueError("同一子文件夹中有同名 .nii 与 .nii.gz，无法保证 mask 一一对应。")
-            seen.add(key)
+            previous_key = key
             sample = _sample_dir(relative)
-            sample_dirs.append(sample)
             counts[sample] += 1
             if output_dir:
                 mask = output_dir / relative.parent / (nifti_stem(relative) + ".nii.gz")
@@ -95,7 +97,7 @@ def _scan_index(folder, output_dir, cancel, messages, generation):
             else:
                 marked.append(False)
             report("prepare", index + 1, len(paths))
-        messages.put((generation, "done", paths, sample_dirs, counts, marked, time.perf_counter() - started))
+        messages.put((generation, "done", paths, counts, marked, time.perf_counter() - started))
     except ScanCancelled:
         pass
     except Exception as exc:
@@ -343,13 +345,12 @@ class CaseFlowWidget(ScriptedLoadableModuleWidget):
         if self._index_stage == "building":
             self._build_index_chunk()
 
-    def _begin_index_build(self, paths, sample_dirs, counts, marked, scan_seconds):
+    def _begin_index_build(self, paths, counts, marked, scan_seconds):
         self._index_stage = "building"
         self._index_build = {
             "folder": self._index_folder,
             "staging": qt.QTreeWidget(),
             "paths": paths,
-            "samples": sample_dirs,
             "counts": counts,
             "marked": marked,
             "roots": [],
@@ -366,7 +367,8 @@ class CaseFlowWidget(ScriptedLoadableModuleWidget):
         paths = state["paths"]
         end = min(state["cursor"] + 200, len(paths))
         for index in range(state["cursor"], end):
-            path, sample_dir = paths[index], state["samples"][index]
+            path = paths[index]
+            sample_dir = _sample_dir(path.relative_to(state["folder"]))
             if sample_dir not in state["groups"]:
                 parent = qt.QTreeWidgetItem(state["staging"], [""])
                 state["groups"][sample_dir] = (parent, [])

@@ -17,7 +17,7 @@ index 92d1081..bc4ede3 100644
 @@ -196 +199,3 @@ void qSlicerDataDialogPrivate::addFile(const QFileInfo& file, const QString& rea
 -  if (!this->FileWidget->findItems(file.absoluteFilePath(), Qt::MatchExactly).isEmpty())
 +  const QString absoluteFilePath = file.absoluteFilePath();
-+  const QString pathKey = absoluteFilePath.toCaseFolded();
++  const QString pathKey = absoluteFilePath;
 +  if (this->AddedFilePaths.contains(pathKey))
 @@ -216 +221 @@ void qSlicerDataDialogPrivate::addFile(const QFileInfo& file, const QString& rea
 -    fileDescriptions = coreIOManager->fileDescriptions(file.absoluteFilePath());

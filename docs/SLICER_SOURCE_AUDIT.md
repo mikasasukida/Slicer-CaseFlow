@@ -27,7 +27,7 @@
 
 运行时探针进一步确认：在 Slicer 5.10.0 中清空切片视图并移除 MRI 节点后，Red 视图的重采样管线仍把上一例 `vtkImageData` 保留在输入端；节点已不存在并不意味着这份体素数据已无引用。CaseFlow 在移除自己的病例前额外断开指向该病例的空白切片层输入，同时保留其他图像的显示。[切片层空节点分支](https://github.com/Slicer/Slicer/blob/v5.10.0/Libs/MRML/Logic/vtkMRMLSliceLayerLogic.cxx#L625-L745)。
 
-源码还显示 Segment Editor 的历史对象在解绑分割节点后可能继续引用上例分割。CaseFlow 可通过编辑器公开接口清空撤销状态并恢复原撤销设置，但历史对象的分割指针需要在 Slicer C++ 逻辑的空节点分支修复；此项目前仍是源码推断，未做运行时内存归因。[编辑器逻辑](https://github.com/Slicer/Slicer/blob/v5.10.0/Modules/Loadable/Segmentations/Logic/vtkSlicerSegmentEditorLogic.cxx#L2114-L2126)、[分割历史](https://github.com/Slicer/Slicer/blob/v5.10.0/Libs/vtkSegmentationCore/vtkSegmentationHistory.cxx#L65-L80)。
+源码确认 `ClearUndoState()` 只移除撤销快照；`vtkSegmentationHistory::SetSegmentation(nullptr)` 才会解除其当前分割对象引用。Segment Editor 的事件处理在分割节点变更时同步历史对象，但分割节点设为 null 后没有调用 `SetSegmentation(nullptr)`。因此，CaseFlow 清空撤销状态并解绑病例后，核心历史对象仍可能保留最后一例分割，直到下一例分割被赋值。该源码路径已确认，实际额外占用多少内存尚未单独归因；现有 `ClearUndoState()` 接口无法解除当前分割引用，可靠修复需要增加可控的 C++ 清理入口或在核心节点移除流程中处理。[撤销状态清理](https://github.com/Slicer/Slicer/blob/v5.10.0/Modules/Loadable/Segmentations/Logic/vtkSlicerSegmentEditorLogic.cxx#L215-L220)、[历史对象事件处理](https://github.com/Slicer/Slicer/blob/v5.10.0/Modules/Loadable/Segmentations/Logic/vtkSlicerSegmentEditorLogic.cxx#L2114-L2126)、[分割历史解绑](https://github.com/Slicer/Slicer/blob/v5.10.0/Libs/vtkSegmentationCore/vtkSegmentationHistory.cxx#L65-L80)。
 
 ## 3. 现有 CaseFlow 已做到什么
 
